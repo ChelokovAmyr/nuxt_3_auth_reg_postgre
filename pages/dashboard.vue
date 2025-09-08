@@ -1,11 +1,11 @@
-<!-- pages/dashboard.vue -->
 <template>
   <div class="min-h-screen bg-gray-100">
     <div class="container mx-auto px-4 py-8">
       <h1 class="text-4xl font-bold text-center mb-8">Dashboard</h1>
 
       <div class="max-w-2xl mx-auto">
-        <div class="bg-white p-6 rounded-lg shadow-md">
+        <!-- Protected User Info -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
           <h2 class="text-2xl font-semibold mb-4">Protected Dashboard</h2>
           <p class="text-gray-600 mb-4">This page is protected by authentication.</p>
 
@@ -25,8 +25,8 @@
           </button>
         </div>
 
-        <!-- Проверка токена -->
-        <div class="bg-white p-6 rounded-lg shadow-md mt-6">
+        <!-- Token Verification -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
           <h3 class="text-lg font-semibold mb-4">Token Verification</h3>
           <button
             @click="verifyToken"
@@ -40,6 +40,9 @@
           </div>
           <p v-if="tokenError" class="text-red-600">{{ tokenError }}</p>
         </div>
+
+        <!-- Products CRUD Table -->
+        <ProductTable />
       </div>
     </div>
   </div>
@@ -52,6 +55,7 @@ const { user, logout } = useAuthUser()
 const tokenInfo = ref(null)
 const tokenError = ref('')
 
+// Проверка токена
 const verifyToken = async () => {
   try {
     const { data, error } = await useFetch('/api/auth/verify-token', {
@@ -70,4 +74,7 @@ const verifyToken = async () => {
     tokenInfo.value = null
   }
 }
+
+// Импорт таблицы продуктов
+import ProductTable from '~/components/ProductTable.vue'
 </script>
