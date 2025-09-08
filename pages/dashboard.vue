@@ -46,9 +46,7 @@
 </template>
 
 <script setup lang="ts">
-definePageMeta({
-  requiresAuth: true // Эта страница требует аутентификации
-})
+definePageMeta({ requiresAuth: true })
 
 const { user, logout } = useAuthUser()
 const tokenInfo = ref(null)
@@ -56,11 +54,19 @@ const tokenError = ref('')
 
 const verifyToken = async () => {
   try {
-    const { data } = await useFetch('/api/auth/verify-token')
-    tokenInfo.value = data.value
-    tokenError.value = ''
-  } catch (error: any) {
-    tokenError.value = error.message
+    const { data, error } = await useFetch('/api/auth/verify-token', {
+      credentials: 'include' // ✅ кука уйдёт
+    })
+
+    if (error.value) {
+      tokenError.value = error.value.statusMessage || 'Token invalid'
+      tokenInfo.value = null
+    } else {
+      tokenInfo.value = data.value
+      tokenError.value = ''
+    }
+  } catch (e: any) {
+    tokenError.value = e.message
     tokenInfo.value = null
   }
 }
