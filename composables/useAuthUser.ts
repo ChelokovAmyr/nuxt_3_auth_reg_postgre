@@ -41,7 +41,23 @@ export const useAuthUser = () => {
     }
   }
 
-  // composables/useAuthUser.ts
+  const refreshToken = async () => {
+    try {
+      const { data, error } = await useFetch('/api/auth/refresh', {
+        method: 'POST'
+      })
+
+      if (error.value) {
+        throw new Error(error.value.data?.statusMessage || 'Token refresh failed')
+      }
+
+      return data.value
+    } catch (error) {
+      user.value = null
+      throw error
+    }
+  }
+
   const fetchUser = async () => {
     try {
       const { data, error } = await useFetch('/api/auth/me')
@@ -52,7 +68,7 @@ export const useAuthUser = () => {
         user.value = null
       }
     } catch (error) {
-      console.error('Token validation failed:', error)
+      console.error('Fetch user error:', error)
       user.value = null
     }
   }
@@ -63,6 +79,7 @@ export const useAuthUser = () => {
     login,
     register,
     logout,
+    refreshToken,
     fetchUser
   }
 }

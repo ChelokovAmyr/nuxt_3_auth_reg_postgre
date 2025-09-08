@@ -1,3 +1,4 @@
+// server/api/auth/register.post.ts
 import { UserRegister } from '~/types/user'
 import { authService } from '~/server/utils/imports'
 
@@ -14,16 +15,25 @@ export default defineEventHandler(async (event) => {
 
     const result = await authService.register(body)
 
-    setCookie(event, 'auth_token', result.token, {
+    // Устанавливаем cookies
+    setCookie(event, 'auth_token', result.accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
+      maxAge: 15 * 60, // 15 минут
+      path: '/'
+    })
+
+    setCookie(event, 'refresh_token', result.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 7 * 24 * 60 * 60, // 7 дней
       path: '/'
     })
 
     return {
       user: result.user,
-      token: result.token
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken
     }
   } catch (error: any) {
     throw createError({
