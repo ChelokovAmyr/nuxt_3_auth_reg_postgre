@@ -3,54 +3,58 @@ import { authService } from '~/server/utils/imports'
 
 export default defineEventHandler(async (event) => {
   try {
-    const token = getCookie(event, 'auth_token')
+    const accessToken = getCookie(event, 'auth_token')
+    const refreshToken = getCookie(event, 'refresh_token')
 
-    if (!token) {
+    // Если нет токенов — возвращаем null
+    if (!accessToken && !refreshToken) {
       return { user: null }
     }
 
-    const user = await authService.validateAccessToken(token)
+    let user = null
 
-    if (!user) {
-      // Пытаемся обновить токен если access token истек
-      const refreshToken = getCookie(event, 'refresh_token')
-      if (refreshToken) {
-        try {
-          const tokens = await authService.refreshAccessToken(refreshToken)
+    // Попытка верифицировать access token
+    if (accessToken) {
+      user = await authService.validateAccessToken(accessToken)
+    }
 
-          setCookie(event, 'auth_token', tokens.accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            maxAge: 15 * 60,
-            path: '/'
-          })
+    // Если access token истёк и есть refresh token
+    if (!user && refreshToken) {
+      try {
+        const tokens = await authService.refreshAccessToken(refreshToken)
 
-          setCookie(event, 'refresh_token', tokens.refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            maxAge: 7 * 24 * 60 * 60,
-            path: '/'
-          })
+        // Обновляем cookies
+        setCookie(event, 'auth_token', tokens.accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 15 * 60,
+          path: '/'
+        })
 
-          // Получаем пользователя с новым токеном
-          const newUser = await authService.validateAccessToken(tokens.accessToken)
-          return { user: newUser }
-        } catch (refreshError) {
-          // Если refresh не удался - очищаем cookies
-          deleteCookie(event, 'auth_token')
-          deleteCookie(event, 'refresh_token')
-          return { user: null }
-        }
+        setCookie(event, 'refresh_token', tokens.refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 7 * 24 * 60 * 60,
+          path: '/'
+        })
+
+        // Верифицируем новый access token
+        user = await authService.validateAccessToken(tokens.accessToken)
+      } catch {
+        // Если refresh не удался — чистим куки
+        deleteCookie(event, 'auth_token', { path: '/' })
+        deleteCookie(event, 'refresh_token', { path: '/' })
+        return { user: null }
       }
-
-      deleteCookie(event, 'auth_token')
-      return { user: null }
     }
 
     return { user }
-  } catch (error: any) {
-    deleteCookie(event, 'auth_token')
-    deleteCookie(event, 'refresh_token')
+  } catch (error) {
+    // На всякий случай чистим куки при ошибках
+    deleteCookie(event, 'auth_token', { path: '/' })
+    deleteCookie(event, 'refresh_token', { path: '/' })
     return { user: null }
   }
 })

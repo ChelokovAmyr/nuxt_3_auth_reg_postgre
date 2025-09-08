@@ -2,30 +2,33 @@
 import { authService } from '~/server/utils/imports'
 
 export default defineEventHandler(async (event) => {
-  const refreshToken = getCookie(event, 'refresh_token')
-
-  if (!refreshToken) {
-    throw createError({
-      statusCode: 401,
-      statusMessage: 'Refresh token required'
-    })
-  }
-
   try {
+    const refreshToken = getCookie(event, 'refresh_token')
+
+    if (!refreshToken) {
+      throw createError({
+        statusCode: 401,
+        statusMessage: 'Refresh token required'
+      })
+    }
+
+    // Пытаемся обновить access token
     const tokens = await authService.refreshAccessToken(refreshToken)
 
     // Устанавливаем новые cookies
     setCookie(event, 'auth_token', tokens.accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 15 * 60, // 15 минут
+      sameSite: 'lax',           // для локалки
+      maxAge: 15 * 60,           // 15 минут
       path: '/'
     })
 
     setCookie(event, 'refresh_token', tokens.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 7 * 24 * 60 * 60, // 7 дней
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60,  // 7 дней
       path: '/'
     })
 
@@ -35,8 +38,8 @@ export default defineEventHandler(async (event) => {
     }
   } catch (error: any) {
     // Удаляем невалидные cookies
-    deleteCookie(event, 'auth_token')
-    deleteCookie(event, 'refresh_token')
+    deleteCookie(event, 'auth_token', { path: '/' })
+    deleteCookie(event, 'refresh_token', { path: '/' })
 
     throw createError({
       statusCode: 401,
